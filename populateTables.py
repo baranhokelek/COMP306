@@ -7,7 +7,7 @@ from operator import mul
 mydb = mysql.connector.connect(
     host="localhost",
     user="root",
-    password="hellothere",
+    password="database2021",
 )
 
 mycursor = mydb.cursor()
@@ -18,17 +18,17 @@ if delete_on_beginning:
     mycursor.execute("drop database if exists RestaurantChain")
     mycursor.execute("create database RestaurantChain")
     mycursor.execute("use RestaurantChain")
-    mycursor.execute("CREATE TABLE Branch (Location VARCHAR(100),City VARCHAR(100),OpeningYear VARCHAR(100),PRIMARY KEY (Location))")
-    mycursor.execute("CREATE TABLE Chef (ID INT, Name VARCHAR(100), Location VARCHAR(100), Salary INT, Age INT, ChefRank INT, PRIMARY KEY (ID), FOREIGN KEY (Location) REFERENCES Branch(Location))")
-    mycursor.execute("CREATE TABLE Staff (SID INT,Name VARCHAR(100),Location VARCHAR(100),Salary INT,Age INT,FOREIGN KEY (Location) REFERENCES Branch (Location),PRIMARY KEY (SID))")
-    mycursor.execute("CREATE TABLE Customer (CID INT,Name VARCHAR(100),Location VARCHAR(100),Age INT,FOREIGN KEY (Location) REFERENCES Branch (Location),PRIMARY KEY (CID))")
+    mycursor.execute("CREATE TABLE Branch (BID INT, Location VARCHAR(100),City VARCHAR(100),OpeningYear VARCHAR(100),PRIMARY KEY (BID))")
+    mycursor.execute("CREATE TABLE Chef (ID INT, Name VARCHAR(100), BID INT, Salary INT, Age INT, ChefRank INT, PRIMARY KEY (ID), FOREIGN KEY (BID) REFERENCES Branch(BID))")
+    mycursor.execute("CREATE TABLE Staff (SID INT,Name VARCHAR(100),BID INT,Salary INT,Age INT,FOREIGN KEY (BID) REFERENCES Branch (BID),PRIMARY KEY (SID))")
+    mycursor.execute("CREATE TABLE Customer (CID INT,Name VARCHAR(100),BID INT,Age INT,FOREIGN KEY (BID) REFERENCES Branch (BID),PRIMARY KEY (CID))")
     mycursor.execute("CREATE TABLE Recipe (RecipeName VARCHAR(100),Season VARCHAR(100),Calories INT,Price REAL,PRIMARY KEY (RecipeName))")
-    mycursor.execute("CREATE TABLE Ingredient (IngredientName VARCHAR(100),Location VARCHAR(100),Season VARCHAR(100),Price REAL,Storage INT, FOREIGN KEY (Location) REFERENCES Branch(Location),PRIMARY KEY (IngredientName, Location))")
+    mycursor.execute("CREATE TABLE Ingredient (IngredientName VARCHAR(100),BID INT,Season VARCHAR(100),Price REAL,Storage INT, FOREIGN KEY (BID) REFERENCES Branch(BID),PRIMARY KEY (IngredientName, BID))")
     mycursor.execute("CREATE TABLE RecipeIngredient (RecipeName VARCHAR(100),IngredientName VARCHAR(100),Amount INT,FOREIGN KEY (RecipeName) REFERENCES Recipe (RecipeName),FOREIGN KEY (IngredientName) REFERENCES Ingredient (IngredientName),PRIMARY KEY (RecipeName, IngredientName))")
-    mycursor.execute("CREATE TABLE Menu (Number INT,Location VARCHAR(100),RecipeName VARCHAR(100),Language VARCHAR(100),Page INT,FOREIGN KEY (RecipeName) REFERENCES Recipe (RecipeName),FOREIGN KEY (Location) REFERENCES Branch (Location),PRIMARY KEY (Number, Location))")
+    mycursor.execute("CREATE TABLE Menu (Number INT,BID INT,RecipeName VARCHAR(100),Language VARCHAR(100),Page INT,FOREIGN KEY (RecipeName) REFERENCES Recipe (RecipeName),FOREIGN KEY (BID) REFERENCES Branch (BID),PRIMARY KEY (Number, BID))")
     mycursor.execute("CREATE TABLE MenuHasRecipe (RecipeName VARCHAR(100),MenuNumber INT,FOREIGN KEY (RecipeName) REFERENCES Recipe(RecipeName),FOREIGN KEY (MenuNumber) REFERENCES Menu (Number),PRIMARY KEY (RecipeName, MenuNumber))")
-    mycursor.execute("CREATE TABLE Orders (RecipeName VARCHAR(100),Location VARCHAR(100),CustomerID INT,StaffID INT,ChefID INT,Date VARCHAR(100),FOREIGN KEY (CustomerID) REFERENCES Customer(CID),FOREIGN KEY (StaffID) REFERENCES Staff (SID),FOREIGN KEY (ChefID) REFERENCES Chef (ID),FOREIGN KEY (Location) REFERENCES Branch (Location),FOREIGN KEY (RecipeName) REFERENCES Recipe(RecipeName),PRIMARY KEY (Location, RecipeName, CustomerID, StaffID, ChefID))")
-    mycursor.execute("CREATE TABLE CustomerRatesBranch (CustomerID INT,Location VARCHAR(100),Comment VARCHAR(100),Rating REAL, FOREIGN KEY (Location) REFERENCES Branch (Location),FOREIGN KEY (CustomerID ) REFERENCES Customer (CID),PRIMARY KEY (CustomerID, Location))")
+    mycursor.execute("CREATE TABLE Orders (RecipeName VARCHAR(100),BID INT,CustomerID INT,StaffID INT,ChefID INT,Date VARCHAR(100),FOREIGN KEY (CustomerID) REFERENCES Customer(CID),FOREIGN KEY (StaffID) REFERENCES Staff (SID),FOREIGN KEY (ChefID) REFERENCES Chef (ID),FOREIGN KEY (BID) REFERENCES Branch (BID),FOREIGN KEY (RecipeName) REFERENCES Recipe(RecipeName),PRIMARY KEY (BID, RecipeName, CustomerID, StaffID, ChefID))")
+    mycursor.execute("CREATE TABLE CustomerRatesBranch (CustomerID INT,BID INT,Comment VARCHAR(100),Rating REAL, FOREIGN KEY (BID) REFERENCES Branch (BID),FOREIGN KEY (CustomerID ) REFERENCES Customer (CID),PRIMARY KEY (CustomerID, BID))")
 
 # First, I have to create lists of attributes of primary keys to make sure everything is consistent.
 # If we randomly generate ChefID's in one table, and forget them, it would be impossible to create a consistent dataset.
@@ -37,7 +37,7 @@ Primary Keys:
 Key Name    |   Type    |   Qty
 ----------------------------------
 ChefID      |   Integer |   200
-Location    |   Char    |   50
+BranchID    |   Integer |   50
 StaffID     |   Integer |   400
 CustID      |   Integer |   1000
 RecipeName  |   Char    |   20
@@ -60,8 +60,11 @@ customerIDLowerLimit = 10000
 customerIDUpperLimit = 100000
 menuNumberLowerLimit = 1
 menuNumberUpperLimit = 100
+branchIDLowerLimit = 1
+branchIDUpperLimit = 100
 
 chefIDs = random.sample(range(chefIDLowerLimit, chefIDUpperLimit), chefIDQty)
+branchIDs = random.sample(range(branchIDLowerLimit, branchIDUpperLimit), locationQty)
 locations = [fake.address().replace("\n", " , ") for i in range(locationQty)]
 staffIDs = random.sample(range(staffIDLowerLimit, staffIDUpperLimit), staffIDQty)
 customerIDs = random.sample(range(customerIDLowerLimit, customerIDUpperLimit), customerIDQty)
@@ -101,6 +104,8 @@ def randomName():
 def randomLocation():
     return locations[random.randint(0, locationQty-1)]
 
+def randomBID():
+    return branchIDs[random.randint(0, locationQty-1)]
 
 def randomSalary(lowerLimit=100, upperLimit=3000):
     return random.randint(lowerLimit, upperLimit)
@@ -129,10 +134,11 @@ def randomText(length=100):
 def randomSeason():
     return random.choice(seasons)
 
-
-def randomPrice(lowerLimit=20.0, upperLimit=200.0):
+def randomRecipePrice(lowerLimit=100.0, upperLimit=2000.0):
     return round(random.uniform(lowerLimit, upperLimit), 1)
 
+def randomIngredientPrice(lowerLimit=1.0, upperLimit=50.0):
+    return round(random.uniform(lowerLimit, upperLimit), 1)
 
 def randomStorageQty(lowerLimit=0, upperLimit=1000):
     return random.randint(lowerLimit, upperLimit)
@@ -157,6 +163,9 @@ def randomCalories(lowerLimit=100, upperLimit=1500):
 def randomDate():
     return fake.iso8601()
 
+def randomPage():
+    return random.randint(1, 10)
+
 
 def generateUniqueRandomNTuples(*args):
     seen = set()
@@ -174,13 +183,14 @@ def getCombinationRange(*args):
 
 """
 Branch
+BID         :   Char(100)
 Location    :   Char(100)   *
 City        :   Char(100)
 OpeningYear :   Char(100)
 """
 for i in range(locationQty):
-    sql = "insert into Branch(Location, City, OpeningYear) values (%s, %s, %s)"
-    val = (locations[i], randomCity(), randomYear())
+    sql = "insert into Branch(BID, Location, City, OpeningYear) values (%s, %s, %s, %s)"
+    val = (branchIDs[i], locations[i], randomCity(), randomYear())
     mycursor.execute(sql, val)
     mydb.commit()
 
@@ -188,14 +198,14 @@ for i in range(locationQty):
 Chef
 ID      :   Integer     *
 Name    :   Char(100)
-Location:   Char(100)   +
+BID     :   Integer   +
 Salary  :   Integer
 Age     :   Integer
 ChefRank:   Integer
 """
 for i in range(chefIDQty):
-    sql = "insert into Chef(ID, Name, Location, Salary, Age, ChefRank) values (%s, %s, %s, %s, %s, %s)"
-    val = (chefIDs[i], randomName(), randomLocation(), randomSalary(), randomAge(), randomRank())
+    sql = "insert into Chef(ID, Name, BID, Salary, Age, ChefRank) values (%s, %s, %s, %s, %s, %s)"
+    val = (chefIDs[i], randomName(), randomBID(), randomSalary(), randomAge(), randomRank())
     mycursor.execute(sql, val)
     mydb.commit()
 
@@ -203,59 +213,43 @@ for i in range(chefIDQty):
 Customer
 CID     :   Integer     *
 Name    :   Char(100)
-Location:   Char(100)   +
+BID     :   Char(100)   +
 Age     :   Integer
 """
 for i in range(customerIDQty):
-    sql = "insert into Customer(CID, Name, Location, Age) values (%s, %s, %s, %s)"
-    val = (customerIDs[i], randomName(), randomLocation(), randomAge())
+    sql = "insert into Customer(CID, Name, BID, Age) values (%s, %s, %s, %s)"
+    val = (customerIDs[i], randomName(), randomBID(), randomAge())
     mycursor.execute(sql, val)
     mydb.commit()
 
 """
 CustomerRatesBranch
 CustomerID  :   Integer     *
-Location    :   Char(100)   *
+BID         :   Char(100)   *
 Comment     :   Char(100)
 Rating      :   Double
 """
 g = generateUniqueRandomNTuples(customerIDQty, locationQty)
 for i in range(getCombinationRange(customerIDQty, locationQty)):
     customerLocationPair = next(g)
-    sql = "insert into CustomerRatesBranch(CustomerID, Location, Comment, Rating) values (%s, %s, %s, %s)"
-    val = (customerIDs[customerLocationPair[0]], locations[customerLocationPair[1]], randomText(), randomRating())
+    sql = "insert into CustomerRatesBranch(CustomerID, BID, Comment, Rating) values (%s, %s, %s, %s)"
+    val = (customerIDs[customerLocationPair[0]], branchIDs[customerLocationPair[1]], randomText(), randomRating())
     mycursor.execute(sql, val)
     mydb.commit()
 
 """
-for i in range(customerIDQty):
-    for j in range(locationQty):
-        sql = "insert into CustomerRatesBranch(CustomerID, Location, Comment, Rating) values (%s, %s, %s, %s)"
-        val = (customerIDs[i], locations[j], randomText(), randomRating())
-        mycursor.execute(sql, val)
-        mydb.commit()       
-"""
-"""
 Ingredient
 IngredientName  :   Char(100)   *
-Location        :   Char(100)   *
+BID             :   Char(100)   *
 Season          :   Char(100)
 Price           :   Double
 Storage         :   Integer
 """
-"""
-g = generateUniqueRandomNTuples(ingrNameQty, locationQty)
-for i in range(getCombinationRange(ingrNameQty, locationQty)):
-    ingredientLocationPair = next(g)
-    sql = "insert into Ingredient(IngredientName, Location, Season, Price, Storage) values (%s, %s, %s, %s, %s)"
-    val = (ingredients[ingredientLocationPair[0]], locations[ingredientLocationPair[1]], randomSeason(), randomPrice(), randomStorageQty())
-    mycursor.execute(sql, val)
-    mydb.commit()
-"""
+
 for i in range(ingrNameQty):
     for j in range(locationQty):
-        sql = "insert into Ingredient(IngredientName, Location, Season, Price, Storage) values (%s, %s, %s, %s, %s)"
-        val = (ingredients[i], locations[j], randomSeason(), randomPrice(), randomStorageQty())
+        sql = "insert into Ingredient(IngredientName, BID, Season, Price, Storage) values (%s, %s, %s, %s, %s)"
+        val = (ingredients[i], branchIDs[j], randomSeason(), randomIngredientPrice(), randomStorageQty())
         mycursor.execute(sql, val)
         mydb.commit()
 """
@@ -267,31 +261,22 @@ Price       :   Double
 """
 for i in range(recipeNameQty):
     sql = "insert into Recipe(RecipeName, Season, Calories, Price) values (%s, %s, %s, %s)"
-    val = (recipeNames[i], randomSeason(), randomCalories(), randomPrice())
+    val = (recipeNames[i], randomSeason(), randomCalories(), randomRecipePrice())
     mycursor.execute(sql, val)
     mydb.commit()
 
 """
 Menu
 Number      :   Integer     *
-Location    :   Char(100)   *
+BID         :   Char(100)   *
 RecipeName  :   Char(100)   +
 Language    :   Char(100)
 Page        :   Integer
 """
-"""
-g = generateUniqueRandomNTuples(menuNumberQty, locationQty)
-for i in range(getCombinationRange(menuNumberQty, locationQty)):
-    menuNumberLocationPair = next(g)
-    sql = "insert into Menu(Number, Location, RecipeName, Language, Page) values (%s, %s, %s, %s, %s)"
-    val = (menuNumbers[menuNumberLocationPair[0]], locations[menuNumberLocationPair[1]], randomRecipe(), randomLanguage(), randomPrice())
-    mycursor.execute(sql, val)
-    mydb.commit()
-"""
 for i in range(menuNumberQty):
     for j in range(locationQty):
-        sql = "insert into Menu(Number, Location, RecipeName, Language, Page) values (%s, %s, %s, %s, %s)"
-        val = (menuNumbers[i], locations[j], randomRecipe(), randomLanguage(), randomPrice())
+        sql = "insert into Menu(Number, BID, RecipeName, Language, Page) values (%s, %s, %s, %s, %s)"
+        val = (menuNumbers[i], branchIDs[j], randomRecipe(), randomLanguage(), randomPage())
         mycursor.execute(sql, val)
         mydb.commit()
 
@@ -310,31 +295,23 @@ for i in range(getCombinationRange(recipeNameQty, menuNumberQty)):
     mydb.commit()
 
 """
-for i in range(recipeNameQty):
-    for j in range(menuNumberQty):
-        sql = "insert into MenuHasRecipe(RecipeName, MenuNumber) values (%s, %s)"
-        val = (recipeNames[i], menuNumbers[j])
-        mycursor.execute(sql, val)
-        mydb.commit()
-"""
-"""
 Staff   
 SID     :   Integer     *
 Name    :   Char(100)
-Location:   Char(100)   +
+BID     :   Char(100)   +
 Salary  :   Integer
 Age     :   Integer
 """
 for i in range(staffIDQty):
-    sql = "insert into Staff(SID, Name, Location, Salary, Age) values (%s, %s, %s, %s, %s)"
-    val = (staffIDs[i], randomName(), randomLocation(), randomSalary(), randomAge())
+    sql = "insert into Staff(SID, Name, BID, Salary, Age) values (%s, %s, %s, %s, %s)"
+    val = (staffIDs[i], randomName(), randomBID(), randomSalary(), randomAge())
     mycursor.execute(sql, val)
     mydb.commit()
 
 """
 Orders
 RecipeName  :   Char(100)   *+
-Location    :   Char(100)   *+
+BID         :   Char(100)   *+
 CustomerID  :   Integer     *+
 StaffID     :   Integer     *+
 ChefID      :   Integer     *+
@@ -346,8 +323,8 @@ numOrders = getCombinationRange(recipeNameQty, locationQty, customerIDQty, staff
 # I use 10,000 as the upper bound.
 for i in range(min(numOrders, 10000)): 
     theQuintuple = next(g)
-    sql = "insert into Orders(RecipeName, Location, CustomerID, StaffID, ChefID, Date) values (%s, %s, %s, %s, %s, %s)"
-    val = (recipeNames[theQuintuple[0]], locations[theQuintuple[1]], customerIDs[theQuintuple[2]], staffIDs[theQuintuple[3]], chefIDs[theQuintuple[4]], randomDate())
+    sql = "insert into Orders(RecipeName, BID, CustomerID, StaffID, ChefID, Date) values (%s, %s, %s, %s, %s, %s)"
+    val = (recipeNames[theQuintuple[0]], branchIDs[theQuintuple[1]], customerIDs[theQuintuple[2]], staffIDs[theQuintuple[3]], chefIDs[theQuintuple[4]], randomDate())
     mycursor.execute(sql, val)
     mydb.commit()
 
