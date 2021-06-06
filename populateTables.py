@@ -7,7 +7,7 @@ from operator import mul
 mydb = mysql.connector.connect(
     host="localhost",
     user="root",
-    password="database2021",
+    password="hellothere",
 )
 
 mycursor = mydb.cursor()
@@ -25,7 +25,7 @@ if delete_on_beginning:
     mycursor.execute("CREATE TABLE Recipe (RecipeName VARCHAR(100),Season VARCHAR(100),Calories INT,Price REAL,PRIMARY KEY (RecipeName))")
     mycursor.execute("CREATE TABLE Ingredient (IngredientName VARCHAR(100),BID INT,Season VARCHAR(100),Price REAL,Storage INT, FOREIGN KEY (BID) REFERENCES Branch(BID),PRIMARY KEY (IngredientName, BID))")
     mycursor.execute("CREATE TABLE RecipeIngredient (RecipeName VARCHAR(100),IngredientName VARCHAR(100),Amount INT,FOREIGN KEY (RecipeName) REFERENCES Recipe (RecipeName),FOREIGN KEY (IngredientName) REFERENCES Ingredient (IngredientName),PRIMARY KEY (RecipeName, IngredientName))")
-    mycursor.execute("CREATE TABLE Menu (Number INT,BID INT,RecipeName VARCHAR(100),Language VARCHAR(100),Page INT,FOREIGN KEY (RecipeName) REFERENCES Recipe (RecipeName),FOREIGN KEY (BID) REFERENCES Branch (BID),PRIMARY KEY (Number, BID))")
+    mycursor.execute("CREATE TABLE Menu (Number INT,BID INT,Language VARCHAR(100),Page INT,FOREIGN KEY (BID) REFERENCES Branch (BID),PRIMARY KEY (Number, BID))")
     mycursor.execute("CREATE TABLE MenuHasRecipe (RecipeName VARCHAR(100),MenuNumber INT,FOREIGN KEY (RecipeName) REFERENCES Recipe(RecipeName),FOREIGN KEY (MenuNumber) REFERENCES Menu (Number),PRIMARY KEY (RecipeName, MenuNumber))")
     mycursor.execute("CREATE TABLE Orders (RecipeName VARCHAR(100),BID INT,CustomerID INT,StaffID INT,ChefID INT,Date VARCHAR(100),FOREIGN KEY (CustomerID) REFERENCES Customer(CID),FOREIGN KEY (StaffID) REFERENCES Staff (SID),FOREIGN KEY (ChefID) REFERENCES Chef (ID),FOREIGN KEY (BID) REFERENCES Branch (BID),FOREIGN KEY (RecipeName) REFERENCES Recipe(RecipeName),PRIMARY KEY (BID, RecipeName, CustomerID, StaffID, ChefID))")
     mycursor.execute("CREATE TABLE CustomerRatesBranch (CustomerID INT,BID INT,Comment VARCHAR(100),Rating REAL, FOREIGN KEY (BID) REFERENCES Branch (BID),FOREIGN KEY (CustomerID ) REFERENCES Customer (CID),PRIMARY KEY (CustomerID, BID))")
@@ -42,15 +42,16 @@ StaffID     |   Integer |   400
 CustID      |   Integer |   1000
 RecipeName  |   Char    |   20
 Ingr.Name   |   Char    |   40
-MenuNumber  |   Integer |   50
+MenuNumber  |   Integer |   5
 """
 chefIDQty = 200
 locationQty = 50
+branchIDQty = 50
 staffIDQty = 400
 customerIDQty = 1000
 recipeNameQty = 20
 ingrNameQty = 40
-menuNumberQty = 50
+menuNumberQty = 5
 
 chefIDLowerLimit = 10000
 chefIDUpperLimit = 100000
@@ -88,7 +89,9 @@ ingredLong = ["Margarine", "Carrots", "Black Eyed Peas", "Green Pepper", "Salt",
               "Worcestershire Sauce", "Sherry", "Cream Cheese", "Ginger", "Parmesan"]
 random.shuffle(ingredLong)
 ingredients = ingredLong[:ingrNameQty]
-menuNumbers = random.sample(range(menuNumberLowerLimit, menuNumberUpperLimit), menuNumberQty)
+menuNumbers = [i for i in range(1, menuNumberQty+1)]
+languages = ["English", "Turkish", "Chinese", "French", "German"]
+pageNumbers = [100, 20, 3, 18, 50]
 
 seasons = ["Fall", "Spring", "Summer", "Winter"]
 
@@ -148,10 +151,6 @@ def randomRecipe():
     return random.choice(recipeNames)
 
 
-def randomLanguage():
-    return fake.language_name()
-
-
 def randomAmount(lowerLimit=1, upperLimit=10):
     return random.randint(lowerLimit, upperLimit)
 
@@ -162,9 +161,6 @@ def randomCalories(lowerLimit=100, upperLimit=1500):
 
 def randomDate():
     return fake.iso8601()
-
-def randomPage():
-    return random.randint(1, 10)
 
 
 def generateUniqueRandomNTuples(*args):
@@ -269,16 +265,29 @@ for i in range(recipeNameQty):
 Menu
 Number      :   Integer     *
 BID         :   Char(100)   *
-RecipeName  :   Char(100)   +
 Language    :   Char(100)
 Page        :   Integer
 """
-for i in range(menuNumberQty):
-    for j in range(locationQty):
-        sql = "insert into Menu(Number, BID, RecipeName, Language, Page) values (%s, %s, %s, %s, %s)"
-        val = (menuNumbers[i], branchIDs[j], randomRecipe(), randomLanguage(), randomPage())
+"""
+g = generateUniqueRandomNTuples(menuNumberQty, branchIDQty)
+for i in range(100):
+    menuNumberBIDPair = next(g)
+    sql = "insert into Menu(Number, BID, Language, Page) values (%s, %s, %s, %s, %s)"
+    val = (menuNumbers[menuNumberBIDPair[0]], branchIDs[menuNumberBIDPair[1]], randomLanguage(), randomPage())
+    mycursor.execute(sql, val)
+    mydb.commit()
+"""
+
+
+for i in range(branchIDQty):
+    menus = random.randint(1, menuNumberQty)
+    menusForBranch = random.sample(range(0, menuNumberQty), menus)
+    for j in range(menus):
+        sql = "insert into Menu(Number, BID, Language, Page) values (%s, %s, %s, %s)"
+        val = (menuNumbers[menusForBranch[j]], branchIDs[i], languages[menusForBranch[j]], pageNumbers[menusForBranch[j]])
         mycursor.execute(sql, val)
         mydb.commit()
+
 
 """
 MenuHasRecipe
@@ -286,13 +295,25 @@ RecipeName  :   Char(100)   *
 MenuNumber  :   Integer     *
 """
 
+for i in range(menuNumberQty):
+    recipes = random.randint(1, recipeNameQty)
+    recipesForMenu = random.sample(range(0, recipeNameQty), recipes)
+    for j in range(recipes):
+        sql = "insert into MenuHasRecipe(RecipeName, MenuNumber) values (%s, %s)"
+        val = (recipeNames[recipesForMenu[j]], menuNumbers[i])
+        mycursor.execute(sql, val)
+        mydb.commit()
+
+"""
 g = generateUniqueRandomNTuples(recipeNameQty, menuNumberQty)
-for i in range(getCombinationRange(recipeNameQty, menuNumberQty)):
+for i in range(50):
     recipeNameMenuNumberPair = next(g)
     sql = "insert into MenuHasRecipe(RecipeName, MenuNumber) values (%s, %s)"
     val = (recipeNames[recipeNameMenuNumberPair[0]], menuNumbers[recipeNameMenuNumberPair[1]])
     mycursor.execute(sql, val)
     mydb.commit()
+"""
+
 
 """
 Staff   
@@ -321,7 +342,7 @@ g = generateUniqueRandomNTuples(recipeNameQty, locationQty, customerIDQty, staff
 numOrders = getCombinationRange(recipeNameQty, locationQty, customerIDQty, staffIDQty, chefIDQty)
 # Turns out, a random number between minimum qty of primary keys and the permutation of all primary key qtys is just way too much.
 # I use 10,000 as the upper bound.
-for i in range(min(numOrders, 10000)): 
+for i in range(min(numOrders, 100)):
     theQuintuple = next(g)
     sql = "insert into Orders(RecipeName, BID, CustomerID, StaffID, ChefID, Date) values (%s, %s, %s, %s, %s, %s)"
     val = (recipeNames[theQuintuple[0]], branchIDs[theQuintuple[1]], customerIDs[theQuintuple[2]], staffIDs[theQuintuple[3]], chefIDs[theQuintuple[4]], randomDate())
