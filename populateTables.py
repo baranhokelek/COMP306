@@ -1,8 +1,10 @@
+import random
+from datetime import datetime, timedelta
 from functools import reduce
+from operator import mul
+
 import mysql.connector
 from faker import Faker
-import random
-from operator import mul
 
 mydb = mysql.connector.connect(
     host="localhost",
@@ -27,7 +29,7 @@ if delete_on_beginning:
     mycursor.execute("CREATE TABLE RecipeIngredient (RecipeName VARCHAR(100),IngredientName VARCHAR(100),Amount INT,FOREIGN KEY (RecipeName) REFERENCES Recipe (RecipeName),FOREIGN KEY (IngredientName) REFERENCES Ingredient (IngredientName),PRIMARY KEY (RecipeName, IngredientName))")
     mycursor.execute("CREATE TABLE Menu (Number INT,BID INT,Language VARCHAR(100),Page INT,FOREIGN KEY (BID) REFERENCES Branch (BID),PRIMARY KEY (Number, BID))")
     mycursor.execute("CREATE TABLE MenuHasRecipe (RecipeName VARCHAR(100),MenuNumber INT,FOREIGN KEY (RecipeName) REFERENCES Recipe(RecipeName),FOREIGN KEY (MenuNumber) REFERENCES Menu (Number),PRIMARY KEY (RecipeName, MenuNumber))")
-    mycursor.execute("CREATE TABLE Orders (RecipeName VARCHAR(100),BID INT,CustomerID INT,StaffID INT,ChefID INT,Date VARCHAR(100),FOREIGN KEY (CustomerID) REFERENCES Customer(CID),FOREIGN KEY (StaffID) REFERENCES Staff (SID),FOREIGN KEY (ChefID) REFERENCES Chef (ID),FOREIGN KEY (BID) REFERENCES Branch (BID),FOREIGN KEY (RecipeName) REFERENCES Recipe(RecipeName),PRIMARY KEY (BID, RecipeName, CustomerID, StaffID, ChefID))")
+    mycursor.execute("CREATE TABLE Orders (RecipeName VARCHAR(100),BID INT,CustomerID INT,StaffID INT,ChefID INT,Date VARCHAR(100),FOREIGN KEY (CustomerID) REFERENCES Customer(CID),FOREIGN KEY (StaffID) REFERENCES Staff (SID),FOREIGN KEY (ChefID) REFERENCES Chef (ID),FOREIGN KEY (BID) REFERENCES Branch (BID),FOREIGN KEY (RecipeName) REFERENCES Recipe(RecipeName),PRIMARY KEY (BID, RecipeName, CustomerID, StaffID, ChefID, Date))")
     mycursor.execute("CREATE TABLE CustomerRatesBranch (CustomerID INT,BID INT,Comment VARCHAR(100),Rating REAL, FOREIGN KEY (BID) REFERENCES Branch (BID),FOREIGN KEY (CustomerID ) REFERENCES Customer (CID),PRIMARY KEY (CustomerID, BID))")
 
 # First, I have to create lists of attributes of primary keys to make sure everything is consistent.
@@ -53,22 +55,16 @@ recipeNameQty = 20
 ingrNameQty = 40
 menuNumberQty = 5
 
-chefIDLowerLimit = 10000
-chefIDUpperLimit = 100000
-staffIDLowerLimit = 10000
-staffIDUpperLimit = 100000
+chefIDLowerLimit = 100000
+staffIDLowerLimit = 1000
 customerIDLowerLimit = 10000
-customerIDUpperLimit = 100000
-menuNumberLowerLimit = 1
-menuNumberUpperLimit = 100
 branchIDLowerLimit = 1
-branchIDUpperLimit = 100
 
-chefIDs = random.sample(range(chefIDLowerLimit, chefIDUpperLimit), chefIDQty)
-branchIDs = random.sample(range(branchIDLowerLimit, branchIDUpperLimit), locationQty)
+chefIDs = [i for i in range(chefIDLowerLimit, chefIDLowerLimit + chefIDQty)]
+branchIDs = [i for i in range(branchIDLowerLimit, branchIDLowerLimit + branchIDQty)]
 locations = [fake.address().replace("\n", " , ") for i in range(locationQty)]
-staffIDs = random.sample(range(staffIDLowerLimit, staffIDUpperLimit), staffIDQty)
-customerIDs = random.sample(range(customerIDLowerLimit, customerIDUpperLimit), customerIDQty)
+staffIDs = [i for i in range(staffIDLowerLimit, staffIDLowerLimit + staffIDQty)]
+customerIDs = [i for i in range(customerIDLowerLimit, customerIDLowerLimit + customerIDQty)]
 recipeNamesLong = ["African Bean Soup", "Alu Piajer Chorchori", "Apple Chutney", "Apple Pie", "Baked Beans",
                    "Banana Cream Pie", "Bean and Fruit Bake", "Beer Bread", "Black Bean Chili",
                    "Boston Baked Blackeye Peas", "Button Onions with Sultanas", "Casablanca Couscous",
@@ -92,7 +88,6 @@ ingredients = ingredLong[:ingrNameQty]
 menuNumbers = [i for i in range(1, menuNumberQty+1)]
 languages = ["English", "Turkish", "Chinese", "French", "German"]
 pageNumbers = [100, 20, 3, 18, 50]
-
 seasons = ["Fall", "Spring", "Summer", "Winter"]
 
 
@@ -107,8 +102,10 @@ def randomName():
 def randomLocation():
     return locations[random.randint(0, locationQty-1)]
 
+
 def randomBID():
-    return branchIDs[random.randint(0, locationQty-1)]
+    return random.choice(branchIDs)
+
 
 def randomSalary(lowerLimit=100, upperLimit=3000):
     return random.randint(lowerLimit, upperLimit)
@@ -137,11 +134,14 @@ def randomText(length=100):
 def randomSeason():
     return random.choice(seasons)
 
+
 def randomRecipePrice(lowerLimit=100.0, upperLimit=2000.0):
     return round(random.uniform(lowerLimit, upperLimit), 1)
 
+
 def randomIngredientPrice(lowerLimit=1.0, upperLimit=50.0):
     return round(random.uniform(lowerLimit, upperLimit), 1)
+
 
 def randomStorageQty(lowerLimit=0, upperLimit=1000):
     return random.randint(lowerLimit, upperLimit)
@@ -160,7 +160,15 @@ def randomCalories(lowerLimit=100, upperLimit=1500):
 
 
 def randomDate():
-    return fake.iso8601()
+    d1 = datetime.strptime('1/1/2008 1:30 PM', '%m/%d/%Y %I:%M %p')
+    d2 = datetime.strptime('1/1/2009 4:50 AM', '%m/%d/%Y %I:%M %p')
+
+    time_between_dates = d2 - d1
+    days_between_dates = time_between_dates.days
+    random_number_of_days = random.randrange(days_between_dates)
+    random_date = d1 + timedelta(days=random_number_of_days)
+
+    return random_date.strftime('%Y-%m-%d %H:%M:%S')
 
 
 def generateUniqueRandomNTuples(*args):
@@ -176,6 +184,19 @@ def generateUniqueRandomNTuples(*args):
 
 def getCombinationRange(*args):
     return random.randint(min(args), reduce(mul, args))
+
+
+staffBIDs = [i for i in range(1, branchIDQty+1)] + [randomBID() for i in range(staffIDQty - branchIDQty)]
+random.shuffle(staffBIDs)
+chefBIDs = [i for i in range(1, branchIDQty+1)] + [randomBID() for i in range(chefIDQty - branchIDQty)]
+random.shuffle(chefBIDs)
+customerBIDs = [i for i in range(1, branchIDQty+1)] + [randomBID() for i in range(customerIDQty - branchIDQty)]
+random.shuffle(customerBIDs)
+menuNumberOfRecipes = [random.randint(1, recipeNameQty) for i in range(menuNumberQty)]
+menuRecipes = [[recipeNames[i] for i in random.sample(range(recipeNameQty), menuNumberOfRecipes[j])] for j in range(menuNumberQty)]
+branchNumberOfMenus = [random.randint(1, menuNumberQty) for i in range(branchIDQty)]
+branchMenus = [random.sample(range(branchIDQty), branchNumberOfMenus[i]) for i in range(branchIDQty)]  # [[1,2,5], [3,4], [2], ...]
+
 
 """
 Branch
@@ -201,7 +222,7 @@ ChefRank:   Integer
 """
 for i in range(chefIDQty):
     sql = "insert into Chef(ID, Name, BID, Salary, Age, ChefRank) values (%s, %s, %s, %s, %s, %s)"
-    val = (chefIDs[i], randomName(), randomBID(), randomSalary(), randomAge(), randomRank())
+    val = (chefIDs[i], randomName(), chefBIDs[i], randomSalary(), randomAge(), randomRank())
     mycursor.execute(sql, val)
     mydb.commit()
 
@@ -214,7 +235,7 @@ Age     :   Integer
 """
 for i in range(customerIDQty):
     sql = "insert into Customer(CID, Name, BID, Age) values (%s, %s, %s, %s)"
-    val = (customerIDs[i], randomName(), randomBID(), randomAge())
+    val = (customerIDs[i], randomName(), customerBIDs[i], randomAge())
     mycursor.execute(sql, val)
     mydb.commit()
 
@@ -268,23 +289,12 @@ BID         :   Char(100)   *
 Language    :   Char(100)
 Page        :   Integer
 """
-"""
-g = generateUniqueRandomNTuples(menuNumberQty, branchIDQty)
-for i in range(100):
-    menuNumberBIDPair = next(g)
-    sql = "insert into Menu(Number, BID, Language, Page) values (%s, %s, %s, %s, %s)"
-    val = (menuNumbers[menuNumberBIDPair[0]], branchIDs[menuNumberBIDPair[1]], randomLanguage(), randomPage())
-    mycursor.execute(sql, val)
-    mydb.commit()
-"""
 
 
 for i in range(branchIDQty):
-    menus = random.randint(1, menuNumberQty)
-    menusForBranch = random.sample(range(0, menuNumberQty), menus)
-    for j in range(menus):
+    for j in range(len(branchMenus[i])):
         sql = "insert into Menu(Number, BID, Language, Page) values (%s, %s, %s, %s)"
-        val = (menuNumbers[menusForBranch[j]], branchIDs[i], languages[menusForBranch[j]], pageNumbers[menusForBranch[j]])
+        val = (menuNumbers[branchMenus[i][j]], branchIDs[i], languages[branchMenus[i][j]], pageNumbers[branchMenus[i][j]])
         mycursor.execute(sql, val)
         mydb.commit()
 
@@ -304,16 +314,6 @@ for i in range(menuNumberQty):
         mycursor.execute(sql, val)
         mydb.commit()
 
-"""
-g = generateUniqueRandomNTuples(recipeNameQty, menuNumberQty)
-for i in range(50):
-    recipeNameMenuNumberPair = next(g)
-    sql = "insert into MenuHasRecipe(RecipeName, MenuNumber) values (%s, %s)"
-    val = (recipeNames[recipeNameMenuNumberPair[0]], menuNumbers[recipeNameMenuNumberPair[1]])
-    mycursor.execute(sql, val)
-    mydb.commit()
-"""
-
 
 """
 Staff   
@@ -323,9 +323,10 @@ BID     :   Char(100)   +
 Salary  :   Integer
 Age     :   Integer
 """
+
 for i in range(staffIDQty):
     sql = "insert into Staff(SID, Name, BID, Salary, Age) values (%s, %s, %s, %s, %s)"
-    val = (staffIDs[i], randomName(), randomBID(), randomSalary(), randomAge())
+    val = (staffIDs[i], randomName(), staffBIDs[i], randomSalary(), randomAge())
     mycursor.execute(sql, val)
     mydb.commit()
 
@@ -338,16 +339,19 @@ StaffID     :   Integer     *+
 ChefID      :   Integer     *+
 Date        :   Char(100)
 """
-g = generateUniqueRandomNTuples(recipeNameQty, locationQty, customerIDQty, staffIDQty, chefIDQty)
-numOrders = getCombinationRange(recipeNameQty, locationQty, customerIDQty, staffIDQty, chefIDQty)
-# Turns out, a random number between minimum qty of primary keys and the permutation of all primary key qtys is just way too much.
-# I use 10,000 as the upper bound.
-for i in range(min(numOrders, 100)):
-    theQuintuple = next(g)
-    sql = "insert into Orders(RecipeName, BID, CustomerID, StaffID, ChefID, Date) values (%s, %s, %s, %s, %s, %s)"
-    val = (recipeNames[theQuintuple[0]], branchIDs[theQuintuple[1]], customerIDs[theQuintuple[2]], staffIDs[theQuintuple[3]], chefIDs[theQuintuple[4]], randomDate())
-    mycursor.execute(sql, val)
-    mydb.commit()
+maxOrdersPerBranch = 100
+for i in range(branchIDQty):
+    orders = random.randint(1, maxOrdersPerBranch)
+    for j in range(orders):
+        sql = "insert into Orders(RecipeName, BID, CustomerID, StaffID, ChefID, Date) values (%s, %s, %s, %s, %s, %s)"
+        val = (random.choice(menuRecipes[random.choice(branchMenus[i])]),
+               branchIDs[i],
+               customerIDs[random.choice([index for index, value in enumerate(customerBIDs) if value == branchIDs[i]])],
+               staffIDs[random.choice([index for index, value in enumerate(staffBIDs) if value == branchIDs[i]])],
+               chefIDs[random.choice([index for index, value in enumerate(chefBIDs) if value == branchIDs[i]])],
+               randomDate())
+        mycursor.execute(sql, val)
+        mydb.commit()
 
 """
 RecipeIngredient
