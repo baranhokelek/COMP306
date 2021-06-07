@@ -9,7 +9,7 @@ from faker import Faker
 mydb = mysql.connector.connect(
     host="localhost",
     user="root",
-    password="hellothere",
+    password="database2021",
 )
 
 mycursor = mydb.cursor()
@@ -160,8 +160,8 @@ def randomCalories(lowerLimit=100, upperLimit=1500):
 
 
 def randomDate():
-    d1 = datetime.strptime('1/1/2008 1:30 PM', '%m/%d/%Y %I:%M %p')
-    d2 = datetime.strptime('1/1/2009 4:50 AM', '%m/%d/%Y %I:%M %p')
+    d1 = datetime.strptime('1/1/1990 1:30 PM', '%m/%d/%Y %I:%M %p')
+    d2 = datetime.strptime('1/1/2021 4:50 AM', '%m/%d/%Y %I:%M %p')
 
     time_between_dates = d2 - d1
     days_between_dates = time_between_dates.days
