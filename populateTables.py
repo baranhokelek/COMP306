@@ -195,7 +195,7 @@ random.shuffle(customerBIDs)
 menuNumberOfRecipes = [random.randint(1, recipeNameQty) for i in range(menuNumberQty)]
 menuRecipes = [[recipeNames[i] for i in random.sample(range(recipeNameQty), menuNumberOfRecipes[j])] for j in range(menuNumberQty)]
 branchNumberOfMenus = [random.randint(1, menuNumberQty) for i in range(branchIDQty)]
-branchMenus = [random.sample(range(branchIDQty), branchNumberOfMenus[i]) for i in range(branchIDQty)]  # [[1,2,5], [3,4], [2], ...]
+branchMenus = [random.sample(range(menuNumberQty), branchNumberOfMenus[i]) for i in range(branchIDQty)]  # [[1,2,5], [3,4], [2], ...]
 
 
 """
